@@ -23,6 +23,12 @@
  *
  * Outputs: lift energise + H-bridge A/B, PIN_OUT_MOTOR_ENABLE, PIN_OUT_REJECT_SOLENOID.
  *
+ * Serial (115200): every AppState transition is logged.
+ * LEDs: arm-lift LED flashes (500 ms period) while the lift is energised; reject LED
+ * flashes during user reject (lift → solenoid) and during record-end arm-return (motor
+ * + wait-home). Reject is ignored during record-end recovery and during an active reject
+ * sequence.
+ *
  * NOTE: Original text mentioned stopping the lift when it “reaches PIN_BTN_ARM_LIFT”.
  * The user button is not a travel sensor. While lowering, we de-energise immediately when
  * PIN_IN_ARM_LIFT_DOWN is seen. Timed moves still stop after ARM_LIFT_TRAVEL_MS (~2 s).
@@ -60,10 +66,12 @@ constexpr bool ARM_HOME_IS_ARM_IN_ACTIVE = false;
 
 constexpr unsigned long DEBOUNCE_MS = 40;
 constexpr unsigned long ARM_LIFT_TRAVEL_MS = 2000;
-constexpr unsigned long REJECT_LED_MS = 350;
 constexpr unsigned long REJECT_STABLE_AFTER_LIFT_MS = 400;
 /** All uses of PIN_OUT_REJECT_SOLENOID (record-end return + reject). */
 constexpr unsigned long SOLENOID_ENGAGE_MS = 1500;
+
+/** Full blink period for status LEDs (250 ms on / 250 ms off = 500 ms). */
+constexpr unsigned long LED_FLASH_HALF_MS = 250;
 
 // ---------------------------------------------------------------------------
 // Lift helpers — A HIGH B LOW = UP, A LOW B HIGH = DOWN
@@ -127,6 +135,53 @@ enum class AppState : uint8_t {
   ManualLiftDown,
 };
 
+static const __FlashStringHelper *stateName(AppState s) {
+  switch (s) {
+  case AppState::IdleArmAtRest:
+    return F("IdleArmAtRest");
+  case AppState::SecurityLiftUp:
+    return F("SecurityLiftUp");
+  case AppState::Playing:
+    return F("Playing");
+  case AppState::RecordEndLiftTiming:
+    return F("RecordEndLiftTiming");
+  case AppState::RecordEndMotorSolenoid:
+    return F("RecordEndMotorSolenoid");
+  case AppState::RecordEndWaitArmHome:
+    return F("RecordEndWaitArmHome");
+  case AppState::RecordEndWaitRecordClear:
+    return F("RecordEndWaitRecordClear");
+  case AppState::RejectLiftTiming:
+    return F("RejectLiftTiming");
+  case AppState::RejectWaitStable:
+    return F("RejectWaitStable");
+  case AppState::RejectSolenoidPulse:
+    return F("RejectSolenoidPulse");
+  case AppState::ManualLiftUpTiming:
+    return F("ManualLiftUpTiming");
+  case AppState::ManualLiftDown:
+    return F("ManualLiftDown");
+  }
+  return F("?");
+}
+
+static bool liftIsEnergised() {
+  return digitalRead(PIN_OUT_ENERGISE_LIFT) == HIGH;
+}
+
+static bool ledFlashOn(unsigned long t) {
+  return ((t / LED_FLASH_HALF_MS) & 1U) != 0;
+}
+
+static bool inRejectIndicatorFlow(AppState s) {
+  return s == AppState::RejectLiftTiming || s == AppState::RejectWaitStable ||
+         s == AppState::RejectSolenoidPulse;
+}
+
+static bool inRecordEndArmReturnIndicator(AppState s) {
+  return s == AppState::RecordEndMotorSolenoid || s == AppState::RecordEndWaitArmHome;
+}
+
 static AppState state = AppState::IdleArmAtRest;
 static unsigned long phaseStartMs = 0;
 
@@ -160,6 +215,8 @@ static void runLiftTimedDown(unsigned long now, bool reachedDown) {
 }
 
 void setup() {
+  Serial.begin(115200);
+
   pinMode(PIN_BTN_ARM_LIFT, INPUT_PULLUP);
   pinMode(PIN_BTN_REJECT, INPUT_PULLUP);
   pinMode(PIN_IN_ARM_IN, INPUT_PULLUP);
@@ -185,6 +242,9 @@ void setup() {
 
   state = AppState::IdleArmAtRest;
   phaseStartMs = 0;
+
+  Serial.print(F("boot state="));
+  Serial.println(stateName(state));
 }
 
 void loop() {
@@ -212,7 +272,7 @@ void loop() {
   static unsigned long recordEndLastChg = 0;
   static bool recordEndPrevStable = false;
 
-  static unsigned long rejectLedUntil = 0;
+  static AppState prevLoggedState = AppState::IdleArmAtRest;
 
   const unsigned long now = millis();
 
@@ -244,10 +304,6 @@ void loop() {
   (void)latchFall;
   armLiftLatchPrevStable = armLiftLatchOn;
 
-  if (rejectPressEdge) {
-    rejectLedUntil = now + REJECT_LED_MS;
-  }
-
   const bool inRecordEndRecovery =
       (state == AppState::RecordEndLiftTiming ||
        state == AppState::RecordEndMotorSolenoid ||
@@ -273,7 +329,8 @@ void loop() {
     beginRecordEndLift();
   }
 
-  if (rejectPressEdge && !recordEndStable && !inRecordEndRecovery) {
+  if (rejectPressEdge && !recordEndStable && !inRecordEndRecovery &&
+      !inRejectIndicatorFlow(state)) {
     beginRejectSequence();
   }
 
@@ -421,9 +478,6 @@ void loop() {
     break;
 
   case AppState::RecordEndLiftTiming:
-    if (rejectPressEdge) {
-      /* record-end dominates */
-    }
     runLiftTimedUp(now);
     if (!digitalRead(PIN_OUT_ENERGISE_LIFT)) {
       if (recordEndStable) {
@@ -522,6 +576,22 @@ void loop() {
     break;
   }
 
-  digitalWrite(PIN_LED_ARM_LIFT, digitalRead(PIN_OUT_ENERGISE_LIFT));
-  digitalWrite(PIN_LED_REJECT, (now < rejectLedUntil) ? HIGH : LOW);
+  if (liftIsEnergised()) {
+    digitalWrite(PIN_LED_ARM_LIFT, ledFlashOn(now) ? HIGH : LOW);
+  } else {
+    digitalWrite(PIN_LED_ARM_LIFT, LOW);
+  }
+
+  if (inRejectIndicatorFlow(state) || inRecordEndArmReturnIndicator(state)) {
+    digitalWrite(PIN_LED_REJECT, ledFlashOn(now) ? HIGH : LOW);
+  } else {
+    digitalWrite(PIN_LED_REJECT, LOW);
+  }
+
+  if (state != prevLoggedState) {
+    Serial.print(now);
+    Serial.print(F(" ms state -> "));
+    Serial.println(stateName(state));
+    prevLoggedState = state;
+  }
 }
