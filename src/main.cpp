@@ -23,7 +23,8 @@
  *
  * Outputs: lift energise + H-bridge A/B, PIN_OUT_MOTOR_ENABLE, PIN_OUT_REJECT_SOLENOID.
  *
- * Serial (115200): every AppState transition is logged.
+ * Serial (115200): every AppState transition is logged; debounced input changes are
+ * logged as IN name true or false.
  * LEDs: arm-lift LED flashes (500 ms period) while the lift is energised; reject LED
  * flashes during user reject (lift → solenoid) and during record-end arm-return (motor
  * + wait-home). Reject is ignored during record-end recovery and during an active reject
@@ -173,6 +174,14 @@ static bool ledFlashOn(unsigned long t) {
   return ((t / LED_FLASH_HALF_MS) & 1U) != 0;
 }
 
+static void logInputChange(unsigned long nowMs, const __FlashStringHelper *name,
+                           bool v) {
+  Serial.print(nowMs);
+  Serial.print(F(" ms IN "));
+  Serial.print(name);
+  Serial.println(v ? F("true") : F("false"));
+}
+
 static bool inRejectIndicatorFlow(AppState s) {
   return s == AppState::RejectLiftTiming || s == AppState::RejectWaitStable ||
          s == AppState::RejectSolenoidPulse;
@@ -288,6 +297,45 @@ void loop() {
                 armInLastChg);
   readDebounced(PIN_IN_RECORD_END, RECORD_END_ACTIVE, recordEndStable, recordEndLastRaw,
                 recordEndLastChg);
+
+  static bool inputLogPrimed = false;
+  static bool prevArmLiftLatch = false;
+  static bool prevReject = false;
+  static bool prevReachedDown = false;
+  static bool prevArmIn = false;
+  static bool prevRecordEnd = false;
+
+  if (!inputLogPrimed) {
+    if (now >= DEBOUNCE_MS * 3u) {
+      prevArmLiftLatch = armLiftLatchOn;
+      prevReject = rejectStable;
+      prevReachedDown = reachedDown;
+      prevArmIn = armInStable;
+      prevRecordEnd = recordEndStable;
+      inputLogPrimed = true;
+    }
+  } else {
+    if (armLiftLatchOn != prevArmLiftLatch) {
+      logInputChange(now, F("arm_lift_latch"), armLiftLatchOn);
+      prevArmLiftLatch = armLiftLatchOn;
+    }
+    if (rejectStable != prevReject) {
+      logInputChange(now, F("reject_btn"), rejectStable);
+      prevReject = rejectStable;
+    }
+    if (reachedDown != prevReachedDown) {
+      logInputChange(now, F("arm_lift_down"), reachedDown);
+      prevReachedDown = reachedDown;
+    }
+    if (armInStable != prevArmIn) {
+      logInputChange(now, F("arm_in"), armInStable);
+      prevArmIn = armInStable;
+    }
+    if (recordEndStable != prevRecordEnd) {
+      logInputChange(now, F("record_end"), recordEndStable);
+      prevRecordEnd = recordEndStable;
+    }
+  }
 
   const bool armInFall = !armInStable && armInPrevStable;
   armInPrevStable = armInStable;
