@@ -1,5 +1,5 @@
-; Wokwi VS Code extension — build the UNO env first: python -m platformio run
-; https://docs.wokwi.com/vscode/project-config
+# Wokwi VS Code extension — build the UNO env first: python -m platformio run
+# https://docs.wokwi.com/vscode/project-config
 
 [wokwi]
 version = 1
