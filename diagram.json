@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "author": "turntable-ui-controller",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 20, "left": 20, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_lift",
+      "top": 220,
+      "left": 40,
+      "attrs": { "color": "green", "bounce": "0", "label": "Arm lift", "key": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_reject",
+      "top": 220,
+      "left": 120,
+      "attrs": { "color": "red", "bounce": "0", "label": "Reject", "key": "2" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_recordend",
+      "top": 220,
+      "left": 200,
+      "attrs": { "color": "blue", "bounce": "0", "label": "Record end", "key": "3" }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sw_arm_in",
+      "top": 320,
+      "left": 40,
+      "attrs": { "bounce": "0", "label": "Arm off-rest (slide R)" }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sw_lift_down",
+      "top": 320,
+      "left": 160,
+      "attrs": { "bounce": "0", "label": "Lift DOWN limit (slide R)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r10",
+      "top": 100,
+      "left": 360,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led10",
+      "top": 60,
+      "left": 440,
+      "attrs": { "color": "yellow", "label": "Reject LED" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r11",
+      "top": 100,
+      "left": 520,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led11",
+      "top": 60,
+      "left": 600,
+      "attrs": { "color": "green", "label": "Lift LED" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r13",
+      "top": 100,
+      "left": 680,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led13",
+      "top": 60,
+      "left": 760,
+      "attrs": { "color": "white", "label": "Power LED" }
+    }
+  ],
+  "connections": [
+    ["btn_lift:1.r", "uno:2", "green", []],
+    ["btn_lift:2.l", "uno:GND.1", "black", []],
+    ["btn_reject:1.r", "uno:3", "orange", []],
+    ["btn_reject:2.l", "uno:GND.1", "black", []],
+    ["btn_recordend:1.r", "uno:A0", "blue", []],
+    ["btn_recordend:2.l", "uno:GND.1", "black", []],
+    ["sw_arm_in:2", "uno:4", "violet", []],
+    ["sw_arm_in:1", "uno:GND.1", "black", []],
+    ["sw_arm_in:3", "uno:5V", "red", []],
+    ["sw_lift_down:2", "uno:5", "gray", []],
+    ["sw_lift_down:1", "uno:GND.1", "black", []],
+    ["sw_lift_down:3", "uno:5V", "red", []],
+    ["r10:1", "uno:10", "gold", []],
+    ["r10:2", "led10:A", "gold", []],
+    ["led10:C", "uno:GND.2", "black", []],
+    ["r11:1", "uno:11", "gold", []],
+    ["r11:2", "led11:A", "gold", []],
+    ["led11:C", "uno:GND.2", "black", []],
+    ["r13:1", "uno:13", "gold", []],
+    ["r13:2", "led13:A", "gold", []],
+    ["led13:C", "uno:GND.2", "black", []]
+  ],
+  "serialMonitor": {
+    "display": "always",
+    "convertEol": true,
+    "newline": "lf"
+  }
+}
