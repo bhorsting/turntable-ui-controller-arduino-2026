@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Turntable UI Controller — Arduino UNO Pin Wiring</title>
+  <style>
+    @page { margin: 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      color: #111;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 12mm;
+    }
+    h1 { font-size: 18pt; margin: 0 0 4pt; border-bottom: 2px solid #222; padding-bottom: 6pt; }
+    h2 { font-size: 13pt; margin: 16pt 0 8pt; page-break-after: avoid; }
+    h3 { font-size: 11pt; margin: 12pt 0 6pt; }
+    .meta { color: #444; font-size: 9.5pt; margin-bottom: 14pt; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8pt 0 12pt;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 5pt 7pt;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #e8e8e8; font-weight: 600; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    .dir-in { color: #0a5; font-weight: 600; }
+    .dir-out { color: #05a; font-weight: 600; }
+    .active { font-family: Consolas, monospace; font-size: 9.5pt; }
+    .note, .warn {
+      border-left: 4px solid #666;
+      padding: 6pt 10pt;
+      margin: 10pt 0;
+      font-size: 10pt;
+      background: #f5f5f5;
+    }
+    .warn { border-color: #c60; background: #fff8f0; }
+    pre.diagram {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 8.5pt;
+      line-height: 1.25;
+      background: #fafafa;
+      border: 1px solid #ccc;
+      padding: 10pt;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    .led-circuit { font-size: 10pt; margin: 6pt 0; }
+    .footer { margin-top: 20pt; font-size: 9pt; color: #666; border-top: 1px solid #ccc; padding-top: 8pt; }
+    @media print {
+      body { padding: 0; }
+      h2 { page-break-before: auto; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Turntable UI Controller — Pin Wiring Guide</h1>
+<p class="meta">
+  <strong>Board:</strong> Arduino UNO (ATmega328P) &nbsp;|&nbsp;
+  <strong>Firmware:</strong> <code>src/main.cpp</code> &nbsp;|&nbsp;
+  <strong>Serial monitor:</strong> 115200 baud (state + input logging)
+</p>
+
+<div class="warn">
+  <strong>Safety:</strong> Do not connect motors, solenoids, or H-bridge loads directly to the UNO pins.
+  Use suitable drivers/relays. Outputs below are <em>logic signals</em> (typically 5&nbsp;V / GND).
+</div>
+
+<div class="note">
+  All digital inputs use <strong>INPUT_PULLUP</strong> in firmware. Unless noted, “active” means the pin
+  is pulled to the level shown when the condition is true.
+</div>
+
+<h2>1. Serial / reserved pins (UNO)</h2>
+<div class="note">
+  <strong>USB serial uses D0 (RX) and D1 (TX) only.</strong> This project does not assign any signal to D0 or D1,
+  so the H-bridge and relay outputs cannot “take over” the serial pins in software.
+</div>
+<table>
+  <thead>
+    <tr><th>Pin</th><th>UNO function</th><th>Used by this project?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>D0</strong></td><td>UART RX (USB serial in)</td><td><strong>NO — leave free</strong></td></tr>
+    <tr><td><strong>D1</strong></td><td>UART TX (USB serial out)</td><td><strong>NO — leave free</strong></td></tr>
+    <tr><td>D2–D5</td><td>GPIO / INT</td><td>Inputs (buttons, switches)</td></tr>
+    <tr><td>D6</td><td>GPIO / PWM</td><td><strong>Unused</strong></td></tr>
+    <tr><td>D7–D9</td><td>GPIO / PWM</td><td>H-bridge A/B, motor enable</td></tr>
+    <tr><td>D10–D13</td><td>GPIO / SPI / PWM</td><td>LEDs, reject solenoid (SPI not used)</td></tr>
+    <tr><td>A0</td><td>Analog / digital</td><td>Record end input</td></tr>
+    <tr><td>A1–A3</td><td>Analog / digital</td><td>Unused</td></tr>
+    <tr><td>A4, A5</td><td>I2C (SDA, SCL)</td><td>Unused</td></tr>
+  </tbody>
+</table>
+<div class="warn">
+  <strong>If serial garbles when relays click:</strong> that is usually <em>electrical</em>, not wrong pins —
+  relay coils pulling current from the same 5&nbsp;V/GND as the UNO, or noise on long wires. Use a separate 5&nbsp;V (or 12&nbsp;V)
+  supply for relay boards, common ground only, flyback diodes on coils, and keep relay wiring away from the USB cable.
+</div>
+
+<h2>2. Pin assignment summary</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Arduino pin</th>
+      <th>Signal name</th>
+      <th>I/O</th>
+      <th>Active when</th>
+      <th>Connect to</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>D2</strong></td>
+      <td>Arm Lift button</td>
+      <td class="dir-in">IN</td>
+      <td class="active">LOW</td>
+      <td>Latching pushbutton (click-on / click-off): one side to <strong>D2</strong>, other to <strong>GND</strong></td>
+    </tr>
+    <tr>
+      <td><strong>D3</strong></td>
+      <td>Reject button</td>
+      <td class="dir-in">IN</td>
+      <td class="active">LOW</td>
+      <td>Momentary pushbutton: one side to <strong>D3</strong>, other to <strong>GND</strong></td>
+    </tr>
+    <tr>
+      <td><strong>D4</strong></td>
+      <td>Arm In (off rest)</td>
+      <td class="dir-in">IN</td>
+      <td class="active">HIGH</td>
+      <td>Switch/sensor: <strong>HIGH</strong> while arm is <em>not</em> on rest post; <strong>LOW</strong> when parked at rest</td>
+    </tr>
+    <tr>
+      <td><strong>D5</strong></td>
+      <td>Arm Lift Reached Down</td>
+      <td class="dir-in">IN</td>
+      <td class="active">HIGH</td>
+      <td>Limit switch at full DOWN travel: active = <strong>HIGH</strong> (e.g. contact to +5&nbsp;V, common GND)</td>
+    </tr>
+    <tr>
+      <td><strong>A0</strong></td>
+      <td>Record End</td>
+      <td class="dir-in">IN</td>
+      <td class="active">LOW</td>
+      <td>End-of-record sensor: active = <strong>LOW</strong> (e.g. switch to <strong>GND</strong> when triggered)</td>
+    </tr>
+    <tr>
+      <td><strong>D7</strong></td>
+      <td>H-bridge A</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">—</td>
+      <td>Direction input A on arm-lift H-bridge (see direction table below)</td>
+    </tr>
+    <tr>
+      <td><strong>D8</strong></td>
+      <td>H-bridge B</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">—</td>
+      <td>Direction input B — opposite of A while moving; <strong>both off = de-energised</strong></td>
+    </tr>
+    <tr>
+      <td><strong>D9</strong></td>
+      <td>Motor Enable</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">HIGH = on</td>
+      <td>Turntable platter motor enable (relay / driver)</td>
+    </tr>
+    <tr>
+      <td><strong>D10</strong></td>
+      <td>Reject LED</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">HIGH = on</td>
+      <td>Panel LED + series resistor (see §3)</td>
+    </tr>
+    <tr>
+      <td><strong>D11</strong></td>
+      <td>Arm Lift LED</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">HIGH = on</td>
+      <td>Panel LED + series resistor (see §3)</td>
+    </tr>
+    <tr>
+      <td><strong>D12</strong></td>
+      <td>Reject Solenoid</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">HIGH = on</td>
+      <td>Reject mechanism solenoid driver (relay / MOSFET; 1.5&nbsp;s pulses in firmware)</td>
+    </tr>
+    <tr>
+      <td><strong>D13</strong></td>
+      <td>Power LED</td>
+      <td class="dir-out">OUT</td>
+      <td class="active">HIGH = on</td>
+      <td>Panel LED + series resistor; also UNO onboard LED</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Arm lift H-bridge (D7 + D8 only)</h2>
+<div class="warn">
+  <strong>No separate enable pin (D6 unused).</strong> De-energised = <strong>both A and B off</strong>.
+  With <code>OUTPUT_SIGNALS_ACTIVE_LOW = true</code> (typical relay boards), off = <strong>D7 HIGH + D8 HIGH</strong>.
+  With <code>OUTPUT_SIGNALS_ACTIVE_LOW = false</code>, off = <strong>D7 LOW + D8 LOW</strong>.
+  <strong>Never drive both direction relays on</strong> at once.
+</div>
+<table>
+  <thead>
+    <tr><th>Motion</th><th>D7 A</th><th>D8 B</th><th>Notes (active-low relay board)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Off (idle)</strong></td><td>HIGH</td><td>HIGH</td><td>Both direction relays off</td></tr>
+    <tr><td><strong>Lift UP</strong></td><td>LOW</td><td>HIGH</td><td>Direction A relay on</td></tr>
+    <tr><td><strong>Lift DOWN</strong></td><td>HIGH</td><td>LOW</td><td>Direction B relay on</td></tr>
+  </tbody>
+</table>
+<p class="note">While moving, <strong>one of A/B is on, not both</strong>. Swap A/B at the driver only if physical “up” is reversed.</p>
+
+<h2>4. Panel LEDs (D10, D11, D13)</h2>
+<p class="led-circuit">Typical wiring per LED:</p>
+<pre class="diagram">  D10 / D11 / D13 ----[ 220 Ω ]----|>|---- GND
+                                   LED (anode toward pin)</pre>
+<p>Recommended: <strong>220&nbsp;Ω</strong> (150–330&nbsp;Ω for brightness). Cathode to <strong>GND</strong>. Pin HIGH = LED on (steady or flashing per firmware).</p>
+
+<h2>5. Input wiring details</h2>
+
+<h3>5.1 Buttons (D2, D3, A0) — active LOW</h3>
+<pre class="diagram">  +5V (internal pull-up in MCU)
+       |
+      [ ]  switch
+       |
+  Dx or A0 --------+
+                   |
+                  GND</pre>
+<ul>
+  <li><strong>D2 Arm Lift:</strong> maintained contact (latching) — ON/OFF state held until pressed again.</li>
+  <li><strong>D3 Reject:</strong> momentary — pulse on press.</li>
+  <li><strong>A0 Record End:</strong> same as buttons if using a switch to GND; or open-collector sensor pulling LOW when active.</li>
+</ul>
+
+<h3>5.2 Arm In (D4) — active HIGH</h3>
+<pre class="diagram">  At rest (parked):     D4 ---- open or to GND     → reads LOW
+  Off rest (playing):   D4 ---- to +5V            → reads HIGH</pre>
+<p>Example: microswitch on rest post — <strong>NO</strong> to +5&nbsp;V, common to GND, wiper/sense to <strong>D4</strong>, or NC arrangement per your mechanics.</p>
+
+<h3>5.3 Lift down limit (D5) — active HIGH</h3>
+<pre class="diagram">  Not at down limit:    D5 low (open or GND)
+  At down limit:        D5 ---- +5V              → reads HIGH</pre>
+<p>Firmware stops lowering immediately when this input becomes active.</p>
+
+<h2>6. Output wiring (external loads)</h2>
+<table>
+  <thead>
+    <tr><th>Pin</th><th>Load</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>D7, D8</td><td>H-bridge logic inputs</td><td>Wire to IN1/IN2 (or equivalent); both off = lift de-energised</td></tr>
+    <tr><td>D9</td><td>Platter motor</td><td>Enable relay/contactor for turntable drive motor</td></tr>
+    <tr><td>D12</td><td>Reject solenoid</td><td>Use flyback diode across coil; driver rated for solenoid current</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Arduino UNO connector map (digital header)</h2>
+<pre class="diagram">  [USB]
+    |
+    |   POWER: 5V -------+---- (sensors/buttons common +5V where needed)
+    |           GND ------+---- (all returns, LED cathodes, switch commons)
+    |
+    |   DIGITAL (left to right on header):
+    |     D13  Power LED
+    |     D12  Reject solenoid OUT
+    |     D11  Arm lift LED
+    |     D10  Reject LED
+    |      D9  Motor enable OUT
+    |      D8  H-bridge B OUT
+    |      D7  H-bridge A OUT
+    |      D6  (unused)
+    |      D5  Lift down limit IN
+    |      D4  Arm in IN
+    |      D3  Reject button IN
+    |      D2  Arm lift button IN
+    |
+    |   ANALOG:
+    |     A0   Record end IN
+    |     A1–A5  (unused in firmware)</pre>
+
+<h2>8. Ground and power</h2>
+<ul>
+  <li>Common <strong>GND</strong> between UNO, driver boards, relay modules, and sensor returns.</li>
+  <li>UNO powered via USB or barrel jack (7–12&nbsp;V recommended on VIN).</li>
+  <li>High-current loads (motor, actuator, solenoid) use a separate supply; connect grounds only (do not power motors from the 5&nbsp;V pin).</li>
+</ul>
+
+<h2>9. Serial debug (optional)</h2>
+<p>USB serial <strong>115200</strong> baud: logs state changes (<code>state -&gt; …</code>) and debounced inputs (<code>IN … true/false</code>). No extra pins.</p>
+
+<p class="footer">
+  Turntable UI Controller — Arduino UNO &nbsp;|&nbsp; Generated from firmware pin definitions &nbsp;|&nbsp;
+  Print this page (Ctrl+P) or Save as PDF.
+</p>
+
+</body>
+</html>
