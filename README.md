@@ -2,7 +2,7 @@
 
 Firmware for turntable arm lift, platter motor, reject solenoid, and panel LEDs. Logic lives in `src/main.cpp`; pin wiring is in `docs/Pin-Wiring-Guide.html`.
 
-Serial monitor: **115200 baud** (state changes, output reasons, I/O snapshot every 3 s).
+Serial monitor: **115200 baud** (debounced input changes and state changes only).
 
 ---
 

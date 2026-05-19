@@ -3,108 +3,242 @@
   "author": "turntable-ui-controller",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-arduino-uno", "id": "uno", "top": 20, "left": 20, "attrs": {} },
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 40, "left": 80, "attrs": {} },
+
     {
-      "type": "wokwi-pushbutton",
-      "id": "btn_lift",
-      "top": 220,
+      "type": "wokwi-text",
+      "id": "hdr_inputs",
+      "top": 340,
       "left": 40,
-      "attrs": { "color": "green", "bounce": "0", "label": "Arm lift", "key": "1" }
+      "attrs": { "text": "INPUTS" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "hdr_relays",
+      "top": 8,
+      "left": 400,
+      "attrs": { "text": "RELAY STATE  (LED on = relay energized)" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "hdr_panel",
+      "top": 188,
+      "left": 400,
+      "attrs": { "text": "PANEL LEDs" }
+    },
+
+    {
+      "type": "wokwi-text",
+      "id": "name_sw_lift",
+      "top": 368,
+      "left": 48,
+      "attrs": { "text": "D2 — Arm Lift Latch\nL = ON" }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sw_lift",
+      "top": 408,
+      "left": 64,
+      "attrs": { "bounce": "0", "value": "1", "label": "Arm Lift Latch" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "name_btn_reject",
+      "top": 368,
+      "left": 288,
+      "attrs": { "text": "D3 — Reject\n(momentary)" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_reject",
-      "top": 220,
-      "left": 120,
-      "attrs": { "color": "red", "bounce": "0", "label": "Reject", "key": "2" }
+      "top": 408,
+      "left": 312,
+      "attrs": { "color": "red", "bounce": "0", "label": "Reject" }
     },
     {
-      "type": "wokwi-pushbutton",
-      "id": "btn_recordend",
-      "top": 220,
-      "left": 200,
-      "attrs": { "color": "blue", "bounce": "0", "label": "Record end", "key": "3" }
+      "type": "wokwi-text",
+      "id": "name_sw_recordend",
+      "top": 368,
+      "left": 528,
+      "attrs": { "text": "A0 — Record End\nL = ON" }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sw_recordend",
+      "top": 408,
+      "left": 552,
+      "attrs": { "bounce": "0", "value": "1", "label": "Record End" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "name_sw_arm_in",
+      "top": 508,
+      "left": 48,
+      "attrs": { "text": "D4 — Arm In\nR = off rest" }
     },
     {
       "type": "wokwi-slide-switch",
       "id": "sw_arm_in",
-      "top": 320,
-      "left": 40,
-      "attrs": { "bounce": "0", "label": "Arm off-rest (slide R)" }
+      "top": 548,
+      "left": 64,
+      "attrs": { "bounce": "0", "value": "1", "label": "Arm In" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "name_sw_lift_down",
+      "top": 508,
+      "left": 288,
+      "attrs": { "text": "D5 — Lift Down Limit\nR = at limit" }
     },
     {
       "type": "wokwi-slide-switch",
       "id": "sw_lift_down",
-      "top": 320,
-      "left": 160,
-      "attrs": { "bounce": "0", "label": "Lift DOWN limit (slide R)" }
+      "top": 548,
+      "left": 312,
+      "attrs": { "bounce": "0", "label": "Lift Down Limit" }
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_relay_a",
+      "top": 36,
+      "left": 448,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_relay_a",
+      "top": 72,
+      "left": 472,
+      "attrs": { "color": "blue", "label": "H-bridge A (D7)" }
     },
     {
       "type": "wokwi-resistor",
+      "id": "r_relay_b",
+      "top": 36,
+      "left": 608,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_relay_b",
+      "top": 72,
+      "left": 632,
+      "attrs": { "color": "cyan", "label": "H-bridge B (D8)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_relay_motor",
+      "top": 36,
+      "left": 768,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_relay_motor",
+      "top": 72,
+      "left": 792,
+      "attrs": { "color": "orange", "label": "Motor (D9)" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_relay_solenoid",
+      "top": 36,
+      "left": 928,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_relay_solenoid",
+      "top": 72,
+      "left": 952,
+      "attrs": { "color": "magenta", "label": "Solenoid (D12)" }
+    },
+
+    {
+      "type": "wokwi-resistor",
       "id": "r10",
-      "top": 100,
-      "left": 360,
+      "top": 216,
+      "left": 448,
       "rotate": 90,
       "attrs": { "value": "220" }
     },
     {
       "type": "wokwi-led",
       "id": "led10",
-      "top": 60,
-      "left": 440,
-      "attrs": { "color": "yellow", "label": "Reject LED" }
+      "top": 252,
+      "left": 472,
+      "attrs": { "color": "yellow", "label": "Reject LED (D10)" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r11",
-      "top": 100,
-      "left": 520,
+      "top": 216,
+      "left": 608,
       "rotate": 90,
       "attrs": { "value": "220" }
     },
     {
       "type": "wokwi-led",
       "id": "led11",
-      "top": 60,
-      "left": 600,
-      "attrs": { "color": "green", "label": "Lift LED" }
+      "top": 252,
+      "left": 632,
+      "attrs": { "color": "green", "label": "Arm Lift LED (D11)" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r13",
-      "top": 100,
-      "left": 680,
+      "top": 216,
+      "left": 768,
       "rotate": 90,
       "attrs": { "value": "220" }
     },
     {
       "type": "wokwi-led",
       "id": "led13",
-      "top": 60,
-      "left": 760,
-      "attrs": { "color": "white", "label": "Power LED" }
+      "top": 252,
+      "left": 792,
+      "attrs": { "color": "white", "label": "Power LED (D13)" }
     }
   ],
   "connections": [
-    ["btn_lift:1.r", "uno:2", "green", []],
-    ["btn_lift:2.l", "uno:GND.1", "black", []],
+    ["sw_lift:1", "uno:GND.1", "black", []],
+    ["sw_lift:2", "uno:2", "green", []],
     ["btn_reject:1.r", "uno:3", "orange", []],
     ["btn_reject:2.l", "uno:GND.1", "black", []],
-    ["btn_recordend:1.r", "uno:A0", "blue", []],
-    ["btn_recordend:2.l", "uno:GND.1", "black", []],
-    ["sw_arm_in:2", "uno:4", "violet", []],
+    ["sw_recordend:1", "uno:GND.1", "black", []],
+    ["sw_recordend:2", "uno:A0", "blue", []],
     ["sw_arm_in:1", "uno:GND.1", "black", []],
+    ["sw_arm_in:2", "uno:4", "violet", []],
     ["sw_arm_in:3", "uno:5V", "red", []],
-    ["sw_lift_down:2", "uno:5", "gray", []],
     ["sw_lift_down:1", "uno:GND.1", "black", []],
+    ["sw_lift_down:2", "uno:5", "gray", []],
     ["sw_lift_down:3", "uno:5V", "red", []],
-    ["r10:1", "uno:10", "gold", []],
+
+    ["uno:5V", "r_relay_a:1", "red", ["h0", "v-20", "*", "h0"]],
+    ["r_relay_a:2", "led_relay_a:A", "red", []],
+    ["led_relay_a:C", "uno:7", "blue", ["v0", "h-80", "*", "v0"]],
+    ["uno:5V", "r_relay_b:1", "red", ["h0", "v-20", "*", "h0"]],
+    ["r_relay_b:2", "led_relay_b:A", "red", []],
+    ["led_relay_b:C", "uno:8", "cyan", ["v0", "h-80", "*", "v0"]],
+    ["uno:5V", "r_relay_motor:1", "red", ["h0", "v-20", "*", "h0"]],
+    ["r_relay_motor:2", "led_relay_motor:A", "red", []],
+    ["led_relay_motor:C", "uno:9", "orange", ["v0", "h-80", "*", "v0"]],
+    ["uno:5V", "r_relay_solenoid:1", "red", ["h0", "v-20", "*", "h0"]],
+    ["r_relay_solenoid:2", "led_relay_solenoid:A", "red", []],
+    ["led_relay_solenoid:C", "uno:12", "magenta", ["v0", "h-120", "*", "v0"]],
+
+    ["r10:1", "uno:10", "gold", ["v0", "h-80", "*", "v0"]],
     ["r10:2", "led10:A", "gold", []],
     ["led10:C", "uno:GND.2", "black", []],
-    ["r11:1", "uno:11", "gold", []],
+    ["r11:1", "uno:11", "gold", ["v0", "h-80", "*", "v0"]],
     ["r11:2", "led11:A", "gold", []],
     ["led11:C", "uno:GND.2", "black", []],
-    ["r13:1", "uno:13", "gold", []],
+    ["r13:1", "uno:13", "gold", ["v0", "h-80", "*", "v0"]],
     ["r13:2", "led13:A", "gold", []],
     ["led13:C", "uno:GND.2", "black", []]
   ],

@@ -23,8 +23,7 @@
  *
  * Outputs: H-bridge A/B (D7/D8), PIN_OUT_MOTOR_ENABLE, PIN_OUT_REJECT_SOLENOID.
  *
- * Serial (115200): I/O snapshot every DEBUG_IO_SNAPSHOT_MS; human-readable lines when
- * outputs or states change (see LOG_OUTPUT_REASONS / LOG_STATE_REASONS).
+ * Serial (115200): logs debounced IN changes and STATE changes only.
  * LEDs: arm-lift LED mirrors PIN_BTN_ARM_LIFT; reject LED blinks from reject start until
  * arm is parked (arm_in inactive). Record-end return also blinks reject LED.
  *
@@ -79,11 +78,10 @@ constexpr unsigned long SOLENOID_ENGAGE_MS = 1500;
 /** Full blink period for status LEDs (250 ms on / 250 ms off = 500 ms). */
 constexpr unsigned long LED_FLASH_HALF_MS = 250;
 
-constexpr unsigned long DEBUG_IO_SNAPSHOT_MS = 3000;
 constexpr bool LOG_STATE_REASONS = true;
-constexpr bool LOG_OUTPUT_REASONS = true;
-constexpr bool LOG_INPUT_EDGES = false;
-/** ANSI clear screen before each OUT/STATE/snapshot (needs a terminal that supports ESC). */
+constexpr bool LOG_INPUT_EDGES = true;
+constexpr bool LOG_OUTPUT_REASONS = false;
+/** ANSI clear screen before each log line (needs a terminal that supports ESC). */
 constexpr bool LOG_CLEAR_SCREEN = true;
 
 /**
@@ -337,81 +335,19 @@ static bool ledFlashOn(unsigned long t) {
 
 static void logInputChange(unsigned long nowMs, const __FlashStringHelper *name,
                            bool v) {
+  if (!LOG_INPUT_EDGES) {
+    return;
+  }
+  serialClearScreen();
   Serial.print(nowMs);
   Serial.print(F(" ms IN "));
   Serial.print(name);
+  Serial.print(F(" "));
   Serial.println(v ? F("true") : F("false"));
-}
-
-static void logHL(bool high) {
-  Serial.println(high ? F("H") : F("L"));
-}
-
-/** INPUT pins: digitalRead reflects pin voltage. */
-static void logInPin(const __FlashStringHelper *name, uint8_t pin) {
-  Serial.print(F("  "));
-  Serial.print(name);
-  Serial.print(F(" D"));
-  Serial.print(pin);
-  Serial.print(F("="));
-  logHL(digitalRead(pin) == HIGH);
-}
-
-/**
- * OUTPUT pins: log firmware command vs digitalRead.
- * digitalRead on OUTPUT returns the PORT latch (last write), not pin voltage.
- * If cmd=L but pin=H, external hardware (e.g. H-bridge pull-ups) is pulling the line high.
- */
-static void logOutPinCmdVsRead(const __FlashStringHelper *name, uint8_t pin,
-                               uint8_t cmdLevel) {
-  Serial.print(F("  "));
-  Serial.print(name);
-  Serial.print(F(" D"));
-  Serial.print(pin);
-  Serial.print(F(" cmd="));
-  logHL(cmdLevel == HIGH);
-  Serial.print(F("  pin="));
-  logHL(digitalRead(pin) == HIGH);
 }
 
 static bool rejectInProgress = false;
 static bool rejectLedOutputHigh = false;
-
-static void logIoSnapshot(unsigned long nowMs, bool armLift, bool reject, bool armIn,
-                          bool liftDown, bool recordEnd) {
-  serialClearScreen();
-  Serial.print(nowMs);
-  Serial.println(F(" ms ===== I/O snapshot ====="));
-  Serial.println(F("IN debounced (1=active per firmware):"));
-  Serial.print(F("  arm_lift="));
-  Serial.println(armLift ? 1 : 0);
-  Serial.print(F("  reject="));
-  Serial.println(reject ? 1 : 0);
-  Serial.print(F("  arm_in="));
-  Serial.println(armIn ? 1 : 0);
-  Serial.print(F("  arm_lift_down="));
-  Serial.println(liftDown ? 1 : 0);
-  Serial.print(F("  record_end="));
-  Serial.println(recordEnd ? 1 : 0);
-  Serial.println(F("IN raw pin levels:"));
-  logInPin(F("arm_lift_raw"), PIN_BTN_ARM_LIFT);
-  logInPin(F("reject_raw"), PIN_BTN_REJECT);
-  logInPin(F("arm_in_raw"), PIN_IN_ARM_IN);
-  logInPin(F("arm_lift_down_raw"), PIN_IN_ARM_LIFT_DOWN);
-  logInPin(F("record_end_raw"), PIN_IN_RECORD_END);
-  Serial.println(F("OUT (cmd=firmware, pin=digitalRead; may differ if driven externally):"));
-  logOutPinCmdVsRead(F("hbridge_a"), PIN_OUT_HBRIDGE_A, outCmd.hbridgeA);
-  logOutPinCmdVsRead(F("hbridge_b"), PIN_OUT_HBRIDGE_B, outCmd.hbridgeB);
-  logOutPinCmdVsRead(F("motor_enable"), PIN_OUT_MOTOR_ENABLE, outCmd.motor);
-  logOutPinCmdVsRead(F("reject_solenoid"), PIN_OUT_REJECT_SOLENOID, outCmd.solenoid);
-  logOutPinCmdVsRead(F("led_arm_lift"), PIN_LED_ARM_LIFT, outCmd.ledLift);
-  logOutPinCmdVsRead(F("led_reject"), PIN_LED_REJECT, outCmd.ledReject);
-  logOutPinCmdVsRead(F("led_power"), PIN_LED_POWER, HIGH);
-  Serial.print(F("  reject_in_progress="));
-  Serial.print(rejectInProgress ? 1 : 0);
-  Serial.print(F(" reject_led_cmd="));
-  Serial.println(rejectLedOutputHigh ? F("H") : F("L"));
-}
 
 static bool inRejectIndicatorFlow(AppState s) {
   return s == AppState::RejectLiftTiming || s == AppState::RejectWaitStable ||
@@ -511,7 +447,7 @@ void setup() {
   phaseStartMs = 0;
 
   serialClearScreen();
-  Serial.println(F("boot — screen clears before each log; I/O snapshot every 3s"));
+  Serial.println(F("boot — log on IN change and STATE change only (115200)"));
 }
 
 void loop() {
@@ -536,8 +472,6 @@ void loop() {
   static bool recordEndLastRaw = false;
   static unsigned long recordEndLastChg = 0;
   static bool recordEndPrevStable = false;
-
-  static unsigned long lastIoSnapshotMs = 0;
 
   const unsigned long now = millis();
 
@@ -952,11 +886,5 @@ void loop() {
                    pendingStateReason ? pendingStateReason : F("(reason not recorded)"));
     pendingStateReason = nullptr;
     prevLoggedState = state;
-  }
-
-  if (now - lastIoSnapshotMs >= DEBUG_IO_SNAPSHOT_MS) {
-    lastIoSnapshotMs = now;
-    logIoSnapshot(now, armLiftLatchOn, rejectStable, armInStable, reachedDown,
-                  recordEndStable);
   }
 }
